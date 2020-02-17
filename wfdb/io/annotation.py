@@ -1383,7 +1383,10 @@ def proc_ann_bytes(filebytes, sampto):
                                                                          bpi, subtype, chan, num,
                                                                          aux_note, update)
 
-            current_label_store = filebytes[bpi, 1] >> 2
+            try:
+                current_label_store = filebytes[bpi, 1] >> 2
+            except:
+                break
 
         # Set defaults or carry over previous values if necessary
         subtype, chan, num, aux_note = update_extra_fields(subtype, chan, num, aux_note, update)
@@ -1456,13 +1459,26 @@ def proc_extra_field(label_store, filebytes, bpi, subtype, chan, num, aux_note, 
     elif label_store == 63:
         # length of aux_note string. Max 256? No need to check other bits of
         # second byte?
+        if bpi >= len(filebytes[1:]):
+            return subtype, chan, num, aux_note, update, len(filebytes)
+
         aux_notelen = filebytes[bpi, 0]
-        aux_notebytes = filebytes[bpi + 1:bpi + 1 + int(np.ceil(aux_notelen / 2.)),:].flatten()
+        lo = aux_notelen.size + int(np.ceil(aux_notelen / 2.))
+
+        l = len(filebytes[1:])
+        if bpi + lo >= l:
+            return subtype, chan, num, aux_note, update, len(filebytes)
+
+        aux_notebytes = filebytes[bpi + 1:bpi + 1 + int(np.ceil(aux_notelen / 2.)), :].flatten()
         if aux_notelen & 1:
             aux_notebytes = aux_notebytes[:-1]
+        # except:
+        #     pass
+
         # The aux_note string
         aux_note.append("".join([chr(char) for char in aux_notebytes]))
         update['aux_note'] = False
+
         bpi = bpi + 1 + int(np.ceil(aux_notelen / 2.))
 
     return subtype, chan, num, aux_note, update, bpi
